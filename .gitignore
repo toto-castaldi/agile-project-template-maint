@@ -1,0 +1,9 @@
+# Local agent state and credentials
+.pi/
+.claude/settings.local.json
+CLAUDE.local.md
+
+# OS and editors
+.DS_Store
+.idea/
+.vscode/
