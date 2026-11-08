@@ -43,6 +43,8 @@ SOURCE = """# Product Backlog — `demo`
 
 **Goal:** Seconda versione
 
+**Scope change (2026-02-03):** su accordo dell'utente, BUG-002 è aggiunto.
+
 ### EPIC-001 — Fondamenta
 
 **Scope:** base del progetto
@@ -64,6 +66,8 @@ SOURCE = """# Product Backlog — `demo`
 - **Acceptance criteria:**
   - Test di regressione
 - **Blocked by:** Attesa fornitore
+- **Decision:** Scelta presa
+  su due righe
 
 ## Dependencies and suggested order
 
@@ -73,8 +77,17 @@ SOURCE = """# Product Backlog — `demo`
 
 Ideas not assigned to any version. They need requirements before they can be designed.
 
-- US-009 — Idea con ID
+- US-030 — Idea con ID
 - Idea senza ID
+
+#### US-020 — Item non assegnato
+
+- **Epic:** EPIC-001 — Fondamenta
+- **Type:** User Story · **Priority:** P2 · **Status:** Todo · **Version:** Non assegnata
+- **Dependencies:** TEC-001
+- **Requirements:** REQ-X-001 (da integrare), da definire
+- **Acceptance criteria:**
+  - Criterio dell'item non assegnato
 """
 STATUS = "# Project status\n\n## Notes\n\n- Nota importante\n\n## Blocked\n\nNone.\n"
 
@@ -139,7 +152,7 @@ class ImportMd(unittest.TestCase):
             "add", "--type", "US", "--title", "T", "--version", "v0.2.0", "--epic", "EPIC-001",
             "--priority", "P1", "--criterion", "C", "--requirements", "REQ-X-001",
         )
-        self.assertEqual(result.stdout.strip(), "US-010", result.stderr)
+        self.assertEqual(result.stdout.strip(), "US-031", result.stderr)
 
     def test_dry_run_writes_nothing(self):
         result = self.run_tool("import-md", "--dry-run")
@@ -153,8 +166,39 @@ class ImportMd(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("empty store", result.stderr)
 
-    def test_unknown_field_refused_with_location(self):
-        self.replaced("- **Expected:** Funziona", "- **Colore:** Rosso\n- **Expected:** Funziona")
+    def test_scope_changes_remarks_and_unassigned(self):
+        result = self.run_tool("import-md")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.record("versions", "v0.2.0")["scope_changes"],
+                         ["2026-02-03: su accordo dell'utente, BUG-002 è aggiunto."])
+        self.assertEqual(self.record("items", "BUG-002")["remarks"], ["Decision: Scelta presa\nsu due righe"])
+        self.assertIn("kept as remark: BUG-002: Decision", result.stdout)
+        item = self.record("items", "US-020")
+        self.assertNotIn("version", item)
+        self.assertEqual(item["epic"], "EPIC-001")
+        self.assertEqual(item["requirements"], ["REQ-X-001"])
+        self.assertEqual(item["remarks"], ["Requirements: REQ-X-001 (da integrare), da definire"])
+        self.assertIn("unassigned: {'Todo': 1}", result.stdout)
+        self.assertNotIn("US-020", self.run_tool("ready").stdout)
+        started = self.run_tool("start", "US-020", "--branch", "us/US-020-x")
+        self.assertEqual(started.returncode, 1)
+        self.assertIn("no version", started.stderr)
+        self.assertIn("#### US-020", self.run_tool("export").stdout)
+
+    def test_unassigned_item_may_lack_criteria_until_it_gets_a_version(self):
+        self.replaced("- **Acceptance criteria:**\n  - Criterio dell'item non assegnato\n", "")
+        self.assertEqual(self.run_tool("import-md").returncode, 0)
+        self.assertEqual(self.run_tool("check").returncode, 0)
+        result = self.run_tool("edit", "US-020", "--version", "v0.2.0")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("acceptance_criteria is empty", result.stderr)
+
+    def test_unassigned_item_with_a_version_is_refused(self):
+        self.replaced("**Version:** Non assegnata", "**Version:** v0.2.0")
+        self.assert_refused("is unassigned but")
+
+    def test_stray_line_in_item_refused_with_location(self):
+        self.replaced("- **Expected:** Funziona", "Testo libero\n- **Expected:** Funziona")
         self.assert_refused("BACKLOG.md:")
 
     def test_unknown_section_refused(self):
@@ -178,7 +222,7 @@ class ImportMd(unittest.TestCase):
         self.assert_refused("not in docs/REQUIREMENTS.md")
 
     def test_skip_option_lists_what_is_left_out(self):
-        self.replaced("- **Expected:** Funziona", "- **Colore:** Rosso\n- **Expected:** Funziona")
+        self.replaced("- **Expected:** Funziona", "Testo libero\n- **Expected:** Funziona")
         result = self.run_tool("import-md", "--skip-unrecognized")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("skipped:", result.stdout)

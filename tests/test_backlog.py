@@ -189,6 +189,29 @@ class Versions(Base):
         version = json.loads((self.root / "backlog" / "versions" / "v0.1.0.json").read_text())
         self.assertEqual((version["state"], version["closed_at"]), ("Closed", TODAY))
 
+    def test_scope_change_is_dated_and_appended(self):
+        self.ok("version", "edit", "v0.1.0", "--scope-change", "Aggiunto TEC-001")
+        self.ok("version", "edit", "v0.1.0", "--scope-change", "Aggiunto TEC-002")
+        version = json.loads((self.root / "backlog" / "versions" / "v0.1.0.json").read_text(encoding="utf-8"))
+        self.assertEqual(version["scope_changes"], [f"{TODAY}: Aggiunto TEC-001", f"{TODAY}: Aggiunto TEC-002"])
+        self.assertEqual(version["goal"], "Primo obiettivo")
+        self.assertIn(f"{TODAY}: Aggiunto TEC-001", self.ok("export"))
+
+    def test_add_needs_version_or_unassigned(self):
+        args = ("add", "--type", "US", "--title", "T", "--epic", "EPIC-001", "--priority", "P2", "--criterion", "C")
+        self.assertIn("exactly one", self.refused(*args))
+        self.assertIn("exactly one", self.refused(*args, "--version", "v0.1.0", "--unassigned", "--requirements", "REQ-A-001"))
+        self.assertEqual(self.ok(*args, "--unassigned").strip(), "US-001")
+        self.assertIn("no version", self.refused("start", "US-001", "--branch", "us/US-001-x"))
+        self.ok("edit", "US-001", "--version", "v0.1.0", "--requirements", "REQ-A-001")
+        self.ok("start", "US-001", "--branch", "us/US-001-x")
+
+    def test_remarks_replace_on_edit_and_show(self):
+        self.add("--remark", "Prima")
+        self.ok("edit", "TEC-001", "--remark", "Seconda")
+        self.assertEqual(self.item("TEC-001")["remarks"], ["Seconda"])
+        self.assertIn("Seconda", self.ok("show", "TEC-001"))
+
     def test_no_new_work_in_closed_version(self):
         self.ok("close-version", "v0.1.0")
         self.assertIn("closed version", self.refused(
