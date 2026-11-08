@@ -22,9 +22,9 @@ The files of the template (`AGENTS.md`, `CLAUDE.md`, `docs/PROCESS.md`, `.agents
 
 Check them after every change:
 
-1. `docs/PROCESS.md`, `.agents/skills/` and `.agents/tools/` are project-agnostic and must be copyable unchanged into existing projects.
+1. `docs/PROCESS.md`, `docs/PROCESS-PARALLEL.md`, `.agents/skills/` and `.agents/tools/` are project-agnostic and must be copyable unchanged into existing projects.
 2. Rules and structural labels in English (file names, headings, field labels, states, priorities, IDs, branch prefixes, commit types).
-3. Cross-references stay valid: when a section of `docs/PROCESS.md` is added, removed or renumbered, update every `PROCESS §N` reference in the skills, in the template's `AGENTS.md`, `backlog/` and `README.md`.
+3. Cross-references stay valid: when a section of `docs/PROCESS.md` or `docs/PROCESS-PARALLEL.md` is added, removed or renumbered, update every `PROCESS §N` reference in the skills, in the template's `AGENTS.md`, `backlog/` and `README.md`.
 4. The skill tables in `docs/PROCESS.md` (subsection "Skills" of §10 "Agent operating loop") and in `README.md` list the same skills as `.agents/skills/`.
 5. `.claude/skills` remains a symlink to `../.agents/skills`.
 6. Every skill has valid front matter (`name` equal to its directory, `description`; `disable-model-invocation: true` for skills that must run only on explicit request).
