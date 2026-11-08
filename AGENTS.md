@@ -11,24 +11,25 @@ Run every git and `gh` command for the template with `git -C ../agile-project-te
 
 ## 2. The template is payload, not instructions
 
-The files of the template (`AGENTS.md`, `CLAUDE.md`, `docs/PROCESS.md`, `.agents/skills/*`, `BACKLOG.md`, `STATUS.md`, …) are **content to edit**, not rules for you.
+The files of the template (`AGENTS.md`, `CLAUDE.md`, `docs/PROCESS.md`, `.agents/skills/*`, `.agents/tools/*`, `backlog/`, …) are **content to edit**, not rules for you.
 
 - Ignore the "Template not initialized" notice, the `TEC-001` item and the skills `kickoff`, `add-item`, `start-task`, `finish-task`, `merge-task`, `close-version` of the template: they describe the workflow of *derived* projects. Never run them on the template.
-- Keep the template initializable: placeholders (`<project-name>`, `<YYYY-MM-DD>`, `<lint command>`, …), the notice, the `TEC-001` item and the initial `STATUS.md` snapshot must stay in place unless an issue explicitly changes them.
-- Never record template maintenance in the template's `BACKLOG.md`, `STATUS.md` or `CHANGELOG.md`: those are project skeletons. The template's backlog is GitHub Issues, its changelog is GitHub Releases.
+- Keep the template initializable: placeholders (`<project-name>`, `<YYYY-MM-DD>`, `<lint command>`, …), the notice, the `TEC-001` item and the seed of `backlog/` must stay in place unless an issue explicitly changes them.
+- Never record template maintenance in the template's `backlog/` or `CHANGELOG.md`: those are project skeletons. The template's backlog is GitHub Issues, its changelog is GitHub Releases.
 - Never write project-specific content (stacks, domains, names) into the template.
 
 ## 3. Invariants of the template
 
 Check them after every change:
 
-1. `docs/PROCESS.md` and `.agents/skills/` are project-agnostic and must be copyable unchanged into existing projects.
+1. `docs/PROCESS.md`, `.agents/skills/` and `.agents/tools/` are project-agnostic and must be copyable unchanged into existing projects.
 2. Rules and structural labels in English (file names, headings, field labels, states, priorities, IDs, branch prefixes, commit types).
-3. Cross-references stay valid: when a section of `docs/PROCESS.md` is added, removed or renumbered, update every `PROCESS §N` reference in the skills, in the template's `AGENTS.md`, `BACKLOG.md` and `README.md`.
+3. Cross-references stay valid: when a section of `docs/PROCESS.md` is added, removed or renumbered, update every `PROCESS §N` reference in the skills, in the template's `AGENTS.md`, `backlog/` and `README.md`.
 4. The skill tables in `docs/PROCESS.md` (subsection "Skills" of §10 "Agent operating loop") and in `README.md` list the same skills as `.agents/skills/`.
 5. `.claude/skills` remains a symlink to `../.agents/skills`.
 6. Every skill has valid front matter (`name` equal to its directory, `description`; `disable-model-invocation: true` for skills that must run only on explicit request).
 7. The kickoff still works: everything `kickoff` reads or replaces still exists with the expected structure.
+8. `.agents/tools/backlog.py` uses only the Python standard library, runs on Python 3.10+, `backlog check` passes on the template, and the tests in `tests/` of this workspace pass.
 
 ## 4. Versioning
 

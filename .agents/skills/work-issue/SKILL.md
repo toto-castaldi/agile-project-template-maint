@@ -27,8 +27,8 @@ For a large or risky change ask whether to work in a branch `issue/N-short-name`
 
 ## 3. Implement
 
-1. Edit the template files. Do **not** change `Process version` (only `release-template` does) and do not record anything in the template's `BACKLOG.md`, `STATUS.md` or `CHANGELOG.md`.
-2. Keep placeholders, the "Template not initialized" notice, `TEC-001` and the initial status snapshot intact unless the issue is about them.
+1. Edit the template files. Do **not** change `Process version` (only `release-template` does) and do not record anything in the template's `backlog/` or `CHANGELOG.md`.
+2. Keep placeholders, the "Template not initialized" notice, `TEC-001` and the seed of `backlog/` intact unless the issue is about them.
 3. If a skill was added, removed or renamed, update the skill tables in `docs/PROCESS.md` (§10, subsection "Skills") and `README.md`.
 
 ## 4. Verify
@@ -37,7 +37,7 @@ Walk through every invariant in `AGENTS.md` §3 and give evidence, for example:
 
 ```bash
 cd ../agile-project-template
-grep -rn "§[0-9]" .agents/skills AGENTS.md BACKLOG.md README.md   # references vs. headings of docs/PROCESS.md
+grep -rn "§[0-9]" .agents/skills AGENTS.md backlog README.md   # references vs. headings of docs/PROCESS.md
 grep -n "^## \|^### " docs/PROCESS.md
 ls .agents/skills && readlink .claude/skills
 head -5 .agents/skills/*/SKILL.md

@@ -166,6 +166,20 @@ class Versions(Base):
         self.assertIn("more than one open", self.refused("version", "add", "v0.2.0", "--goal", "G"))
         self.ok("version", "add", "v0.1.1", "--goal", "Patch")
 
+    def test_planned_version_lifecycle(self):
+        self.ok("version", "add", "v0.2.0", "--goal", "Futura", "--planned")
+        self.ok("add", "--type", "TEC", "--title", "T", "--version", "v0.2.0", "--epic", "EPIC-001",
+                "--priority", "P1", "--criterion", "C")
+        self.assertEqual(json.loads(self.ok("ready", "--json"))["total"], 0)
+        self.assertIn("more than one open", self.refused("version", "open", "v0.2.0"))
+        self.refused("close-version", "v0.2.0")
+
+    def test_opening_planned_version_after_close(self):
+        self.ok("version", "add", "v0.2.0", "--goal", "Futura", "--planned")
+        self.ok("close-version", "v0.1.0")
+        self.ok("version", "open", "v0.2.0")
+        self.assertIn("v0.2.0:", self.ok("status"))
+
     def test_close_requires_finished_items(self):
         self.add()
         self.assertIn("TEC-001", self.refused("close-version", "v0.1.0"))
@@ -351,6 +365,11 @@ class Branches(Base):
         self.assertIn("In progress (0)", self.ok("status"))
         self.assertIn("task/TEC-001-slug", self.ok("status", "--branches"))
         self.assertEqual(self.item("TEC-001")["status"], "Todo")
+
+        self.git("merge", "-q", "--no-ff", "-m", "merge", "task/TEC-001-slug", cwd=clone)
+        self.git("push", "-q", "origin", "main", cwd=clone)
+        self.git("switch", "-q", "--detach", "HEAD~1", cwd=clone)
+        self.assertIn("In progress (0)", self.ok("status", "--branches"))
 
     def test_failed_fetch_is_only_a_warning(self):
         result = self.run_tool("status", "--branches")
