@@ -25,11 +25,12 @@ Check them after every change:
 1. `docs/PROCESS.md`, `docs/PROCESS-PARALLEL.md`, `.agents/skills/` and `.agents/tools/` are project-agnostic and must be copyable unchanged into existing projects.
 2. Rules and structural labels in English (file names, headings, field labels, states, priorities, IDs, branch prefixes, commit types).
 3. Cross-references stay valid: when a section of `docs/PROCESS.md` or `docs/PROCESS-PARALLEL.md` is added, removed or renumbered, update every `PROCESS §N` reference in the skills, in the template's `AGENTS.md`, `backlog/` and `README.md`.
-4. The skill tables in `docs/PROCESS.md` (subsection "Skills" of §10 "Agent operating loop") and in `README.md` list the same skills as `.agents/skills/`.
+4. The skill tables in `docs/PROCESS.md` (subsection "Skills" of §10 "Agent operating loop") and in `README.md` list the same skills as `.agents/skills/`. A skill is a folder with a `SKILL.md`; `.agents/skills/backlog-overlay/` is the Claude Code plugin of the backlog pane, not a skill: it is not listed and must never contain a `SKILL.md`.
 5. `.claude/skills` remains a symlink to `../.agents/skills`.
-6. Every skill has valid front matter (`name` equal to its directory, `description`; `disable-model-invocation: true` for skills that must run only on explicit request).
+6. Every skill (folder with a `SKILL.md`) has valid front matter (`name` equal to its directory, `description`; `disable-model-invocation: true` for skills that must run only on explicit request).
 7. The kickoff still works: everything `kickoff` reads or replaces still exists with the expected structure.
-8. `.agents/tools/backlog.py` uses only the Python standard library, runs on Python 3.10+, `backlog check` passes on the template, and the tests in `tests/` of this workspace pass.
+8. `.agents/tools/backlog.py` uses only the Python standard library, runs on Python 3.10+, `backlog check` passes on the template, and the tests in `tests/` of this workspace pass (`python3 -m unittest discover -s tests` and `tests/backlog-overlay/run.sh`, which needs Claude Code).
+9. The pi overlay (`.pi/extensions/backlog/`) and the Claude Code pane (`.agents/skills/backlog-overlay/`) offer the same view and hold no backlog logic of their own: both render `backlog export --json [--branches]`. A change to one is mirrored in the other, or the difference is documented in `README.md`.
 
 ## 4. Versioning
 
