@@ -359,12 +359,14 @@ class Reading(Base):
         self.assertEqual(leftovers, [])
 
 
-class Branches(Base):
+class GitBase(Base):
     def git(self, *args, cwd):
         env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
                "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid"}
         subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, env=env)
 
+
+class Branches(GitBase):
     def test_status_overlays_remote_item_branch(self):
         self.add()
         remote = Path(self.tmp.name) / "remote.git"
@@ -398,6 +400,115 @@ class Branches(Base):
         result = self.run_tool("status", "--branches")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("warning", result.stderr)
+
+    def test_export_outside_git_reports_none(self):
+        data = json.loads(self.ok("export", "--json", "--branches"))
+        self.assertEqual(data["branches"], {"fetch": "none", "remotes": [], "items": {}})
+        self.assertNotIn("branches", json.loads(self.ok("export", "--json")))
+
+
+class BranchResolution(GitBase):
+    """Rules of docs/PROCESS-PARALLEL.md §1 shared with the pi overlay."""
+
+    def setUp(self):
+        super().setUp()
+        self.add()
+        self.add()
+        self.remote = Path(self.tmp.name) / "remote.git"
+        self.git("init", "-q", "--bare", "-b", "main", str(self.remote), cwd=self.tmp.name)
+        self.clone = Path(self.tmp.name) / "clone"
+        self.git("clone", "-q", str(self.remote), str(self.clone), cwd=self.tmp.name)
+        self.git("switch", "-q", "-c", "main", cwd=self.clone)
+        (self.clone / "backlog").mkdir()
+        for part in ("items", "epics", "versions"):
+            subprocess.run(["cp", "-r", str(self.root / "backlog" / part), str(self.clone / "backlog")], check=True)
+        self.root = self.clone
+        self.git("add", ".", cwd=self.clone)
+        self.git("commit", "-qm", "seed", cwd=self.clone)
+        self.git("push", "-q", "-u", "origin", "main", cwd=self.clone)
+        self.time = 1_700_000_000
+
+    def commit(self, message):
+        self.time += 100
+        stamp = f"@{self.time} +0000"
+        env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
+               "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid",
+               "GIT_AUTHOR_DATE": stamp, "GIT_COMMITTER_DATE": stamp}
+        subprocess.run(["git", "commit", "-qam", message], cwd=self.clone, check=True, capture_output=True, env=env)
+
+    def branch_with(self, branch, item_id, *change, push=False):
+        """Create `branch` from main with one state change of `item_id`, then go back to main."""
+        self.git("switch", "-q", "-c", branch, "main", cwd=self.clone)
+        self.ok(*change) if change else self.start(item_id)
+        self.commit(branch)
+        if push:
+            self.git("push", "-q", "origin", branch, cwd=self.clone)
+        self.git("switch", "-q", "main", cwd=self.clone)
+
+    def export(self, *extra):
+        data = json.loads(self.ok("export", "--json", "--branches", *extra))
+        return {i["id"]: i for i in data["items"]}, data["branches"]
+
+    def test_local_unmerged_branch_counts(self):
+        self.branch_with("task/TEC-001-slug", "TEC-001")
+        items, branches = self.export("--no-fetch")
+        self.assertEqual(items["TEC-001"]["status"], "In Progress")
+        self.assertEqual(branches["fetch"], "skipped")
+        self.assertEqual(branches["remotes"], ["origin"])
+        self.assertEqual(branches["items"]["TEC-001"], {"source": "task/TEC-001-slug", "also_in": []})
+        self.assertEqual(items["TEC-002"]["status"], "Todo")
+
+    def test_local_wins_over_remote_tracking_with_same_name(self):
+        self.branch_with("task/TEC-001-slug", "TEC-001", push=True)
+        _, branches = self.export()
+        self.assertEqual(branches["fetch"], "done")
+        self.assertEqual(branches["items"]["TEC-001"], {"source": "task/TEC-001-slug", "also_in": []})
+        self.git("branch", "-q", "-D", "task/TEC-001-slug", cwd=self.clone)
+        _, branches = self.export("--no-fetch")
+        self.assertEqual(branches["items"]["TEC-001"]["source"], "origin/task/TEC-001-slug")
+
+    def test_most_recent_branch_wins_and_others_are_listed(self):
+        self.branch_with("task/TEC-001-old", "TEC-001")
+        self.branch_with("task/TEC-001-new", "TEC-001", "start", "TEC-001", "--branch", "task/TEC-001-new")
+        items, branches = self.export("--no-fetch")
+        self.assertEqual(items["TEC-001"]["branch"], "task/TEC-001-new")
+        self.assertEqual(branches["items"]["TEC-001"], {"source": "task/TEC-001-new", "also_in": ["task/TEC-001-old"]})
+        shown = self.ok("show", "TEC-001", "--branches", "--no-fetch")
+        self.assertIn("**From branch:** task/TEC-001-new", shown)
+        self.assertIn("**Also in:** task/TEC-001-old", shown)
+
+    def test_current_item_branch_keeps_working_tree(self):
+        self.branch_with("task/TEC-001-slug", "TEC-001", push=True)
+        self.git("switch", "-q", "task/TEC-001-slug", cwd=self.clone)
+        self.ok("block", "TEC-001", "--reason", "Attesa")
+        items, branches = self.export("--no-fetch")
+        self.assertEqual(items["TEC-001"]["status"], "Blocked")
+        self.assertNotIn("TEC-001", branches["items"])
+
+    def test_merged_branch_is_ignored(self):
+        self.branch_with("task/TEC-001-slug", "TEC-001")
+        self.git("merge", "-q", "--no-ff", "-m", "merge", "task/TEC-001-slug", cwd=self.clone)
+        self.git("reset", "-q", "--hard", "HEAD~1", cwd=self.clone)
+        self.git("push", "-q", "origin", "task/TEC-001-slug:main", cwd=self.clone)
+        self.git("fetch", "-q", cwd=self.clone)
+        _, branches = self.export("--no-fetch")
+        self.assertNotIn("TEC-001", branches["items"])
+
+    def test_items_only_on_a_branch_are_not_added(self):
+        self.git("switch", "-q", "-c", "task/TEC-003-slug", "main", cwd=self.clone)
+        self.add()
+        self.git("add", ".", cwd=self.clone)
+        self.commit("add")
+        self.git("switch", "-q", "main", cwd=self.clone)
+        items, _ = self.export("--no-fetch")
+        self.assertNotIn("TEC-003", items)
+
+    def test_other_branch_names_are_ignored(self):
+        self.branch_with("feature/TEC-001-slug", "TEC-001")
+        self.branch_with("task/TEC-0011", "TEC-002")
+        items, branches = self.export("--no-fetch")
+        self.assertEqual(branches["items"], {})
+        self.assertEqual(items["TEC-001"]["status"], "Todo")
 
 
 if __name__ == "__main__":
