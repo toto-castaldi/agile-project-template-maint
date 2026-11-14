@@ -86,10 +86,12 @@ class Records(Base):
         ))
 
     def test_requirement_must_exist_in_requirements_doc(self):
-        (self.root / "docs").mkdir()
-        (self.root / "docs" / "REQUIREMENTS.md").write_text("REQ-AUTH-001\n", encoding="utf-8")
+        (self.root / "docs" / "requirements").mkdir(parents=True)
+        (self.root / "docs" / "requirements" / "REQ-AUTH-001.md").write_text(
+            "# REQ-AUTH-001 — Accesso\n\n**State:** Active\n", encoding="utf-8",
+        )
         self.add("--requirements", "REQ-AUTH-001", kind="US")
-        self.assertIn("not in docs/REQUIREMENTS.md", self.refused(
+        self.assertIn("not in docs/requirements/", self.refused(
             "edit", "US-001", "--requirements", "REQ-AUTH-002",
         ))
 

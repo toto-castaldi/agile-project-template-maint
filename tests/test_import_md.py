@@ -97,9 +97,12 @@ class ImportMd(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
-        (self.root / "docs").mkdir()
-        (self.root / "docs" / "REQUIREMENTS.md").write_text("REQ-X-001\n", encoding="utf-8")
-        (self.root / "docs" / "TECHNICAL-DESIGN.md").write_text("MOD-001\n", encoding="utf-8")
+        (self.root / "docs" / "requirements").mkdir(parents=True)
+        (self.root / "docs" / "design").mkdir()
+        (self.root / "docs" / "requirements" / "REQ-X-001.md").write_text(
+            "# REQ-X-001 — Requisito\n\n**State:** Active\n", encoding="utf-8",
+        )
+        (self.root / "docs" / "design" / "modules.md").write_text("# Modules\n\nMOD-001\n", encoding="utf-8")
         (self.root / "STATUS.md").write_text(STATUS, encoding="utf-8")
         self.source(SOURCE)
 
@@ -219,7 +222,7 @@ class ImportMd(unittest.TestCase):
 
     def test_invalid_reference_refused(self):
         self.replaced("**Requirements:** REQ-X-001", "**Requirements:** REQ-X-999")
-        self.assert_refused("not in docs/REQUIREMENTS.md")
+        self.assert_refused("not in docs/requirements/")
 
     def test_skip_option_lists_what_is_left_out(self):
         self.replaced("- **Expected:** Funziona", "Testo libero\n- **Expected:** Funziona")
@@ -229,7 +232,7 @@ class ImportMd(unittest.TestCase):
 
     def test_skip_option_does_not_bypass_validation(self):
         self.replaced("**Requirements:** REQ-X-001", "**Requirements:** REQ-X-999")
-        self.assert_refused("not in docs/REQUIREMENTS.md", "--skip-unrecognized")
+        self.assert_refused("not in docs/requirements/", "--skip-unrecognized")
 
     def test_status_with_a_note_in_parentheses_is_accepted(self):
         self.replaced("**Status:** Done", "**Status:** Done (see Outcome)")
