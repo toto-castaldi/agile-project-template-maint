@@ -225,6 +225,40 @@ class Check(DocsBase):
         self.assertEqual([r["id"] for r in data["requirements"]], ["REQ-B-002", "REQ-B-010", "REQ-NFR-001"])
         self.assertEqual(data["design"][0]["reference"], "design/test-strategy")
 
+    def test_docs_for_lists_the_files_of_an_item(self):
+        self.requirement("REQ-B-001")
+        self.write("docs/requirements/glossary.md", "# Glossary\n")
+        self.write("docs/design/data-model.md", "# Data model\n")
+        self.write("docs/design/modules.md", "# Modules\n\nMOD-001 — Agente\n")
+        self.write("docs/adr/ADR-001-storage.md", "# ADR-001\n")
+        self.add(
+            "--requirements", "REQ-B-001", "--module", "MOD-001",
+            "--design-references", "design/data-model,requirements/glossary,ADR-001,ADR-009,PROCESS §5.2,AGENTS §4,libero",
+            kind="US",
+        )
+        output = self.ok("docs", "--for", "US-001")
+        files, unresolved = output.split("Not resolved to a file:")
+        self.assertEqual(files.splitlines(), [
+            "Files to read for US-001:",
+            "- docs/requirements/REQ-B-001.md",
+            "- docs/design/data-model.md",
+            "- docs/requirements/glossary.md",
+            "- docs/adr/ADR-001-storage.md",
+            "- docs/PROCESS.md §5.2",
+            "- AGENTS.md §4",
+            "- docs/design/modules.md, entry MOD-001",
+        ])
+        self.assertEqual(unresolved.split(), ["-", "ADR-009", "-", "libero"])
+        data = json.loads(self.ok("docs", "--for", "US-001", "--json"))
+        self.assertEqual(data["files"][4], {"reference": "PROCESS §5.2", "path": "docs/PROCESS.md", "section": "5.2"})
+        self.assertEqual(data["files"][-1]["entry"], "MOD-001")
+        self.assertEqual(data["unresolved"], ["ADR-009", "libero"])
+
+    def test_docs_for_without_references_and_unknown_item(self):
+        self.add()
+        self.assertIn("- none", self.ok("docs", "--for", "TEC-001"))
+        self.assertIn("item TEC-404 not found", self.refused("docs", "--for", "TEC-404"))
+
 
 class Migration(DocsBase):
     def setUp(self):
