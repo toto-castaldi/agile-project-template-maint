@@ -384,5 +384,57 @@ class Migration(DocsBase):
         self.assertEqual(migrated, shipped)
 
 
+class ProcessReferences(DocsBase):
+    def setUp(self):
+        super().setUp()
+        self.write("docs/PROCESS.md", "# Process\n\n## 4. Backlog model\n\n### 4.1 Item types\n\n## 5. Git workflow\n\n### 5.3 Merge\n\n## 6. Definition of Done\n")
+        self.write("docs/process/git.md", "# Process: git\n\n## 1. Adding items\n\n## 3. Merge\n")
+        self.write("docs/process/backlog.md", "# Process: backlog\n\n## 3. Item fields\n")
+
+    def test_check_resolves_process_files_and_sections(self):
+        self.add("--design-references", "PROCESS §4.1,process/git,process/git §3,AGENTS §99")
+        self.assertIn("docs/PROCESS.md has no section 9", self.refused("edit", "TEC-001", "--design-references", "PROCESS §9"))
+        self.assertIn("migrate-process", self.refused("edit", "TEC-001", "--design-references", "PROCESS §9"))
+        self.assertIn("docs/process/git.md has no section 2", self.refused("edit", "TEC-001", "--design-references", "process/git §2"))
+        self.assertIn("docs/process/nope.md does not exist", self.refused("edit", "TEC-001", "--design-references", "process/nope"))
+
+    def test_docs_for_lists_process_files(self):
+        self.write("docs/process/nope.md", "# Nope\n")
+        self.add("--design-references", "process/git §3,process/backlog,PROCESS §6,process/nope")
+        (self.root / "docs" / "process" / "nope.md").unlink()
+        output = self.ok("docs", "--for", "TEC-001")
+        self.assertIn("- docs/process/git.md §3\n- docs/process/backlog.md\n- docs/PROCESS.md §6\n", output)
+        self.assertIn("Not resolved to a file:\n- process/nope", output)
+
+    def test_migrate_process_rewrites_old_numbering(self):
+        # A project before 4.0.0: the old PROCESS.md, not checked here, and no docs/process/.
+        shutil.rmtree(self.root / "docs" / "process")
+        (self.root / "docs" / "PROCESS.md").unlink()
+        self.add("--design-references", "PROCESS §6.3,design-free,PROCESS §8,PROCESS §11")
+        self.add("--design-references", "PROCESS §4.3,PROCESS §4.5")
+        self.add()
+        self.write("AGENTS.md", "In addition to `docs/PROCESS.md` §8:\n")
+        self.assertIn("copy the process files", self.refused("migrate-process"))
+        self.write("docs/PROCESS.md", "# Process\n\n## 4. Backlog\n\n### 4.1 Types\n\n### 4.2 States\n\n## 5. Git\n\n### 5.3 Merge\n\n## 6. Done\n")
+        self.write("docs/process/git.md", "# Process: git\n\n## 1. Adding items\n\n## 3. Merge\n")
+        self.write("docs/process/backlog.md", "# Process: backlog\n\n## 3. Item fields\n")
+        before = self.item("TEC-001")
+        dry = self.ok("migrate-process", "--dry-run")
+        self.assertIn("TEC-001: PROCESS §6.3, design-free, PROCESS §8, PROCESS §11 -> PROCESS §5.3, process/git §3, design-free, PROCESS §6, PROCESS §11", dry)
+        self.assertIn("unknown section left as it is: PROCESS §11", dry)
+        self.assertIn("2 item(s) with rewritten references", dry)
+        self.assertEqual(self.item("TEC-001"), before)
+        result = self.run_tool("migrate-process")
+        output = result.stdout
+        self.assertIn("check by hand: AGENTS.md:1:", output)
+        # PROCESS §11 is left as it is and the check reports it.
+        self.assertEqual(result.returncode, 1, output)
+        self.assertIn("docs/PROCESS.md has no section 11", output)
+        self.assertEqual(self.item("TEC-001")["design_references"], ["PROCESS §5.3", "process/git §3", "design-free", "PROCESS §6", "PROCESS §11"])
+        self.assertEqual(self.item("TEC-002")["design_references"], ["PROCESS §4.1", "PROCESS §4.2"])
+        self.assertNotIn("design_references", self.item("TEC-003"))
+        self.assertIn("migrate only once", self.refused("migrate-process"))
+
+
 if __name__ == "__main__":
     unittest.main()

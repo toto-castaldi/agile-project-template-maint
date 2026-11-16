@@ -20,7 +20,7 @@ Work in `../agile-project-template` (`T` below).
 State briefly:
 
 - which template files change;
-- whether the change affects existing projects (`docs/PROCESS.md` or `.agents/skills/`) and the expected semver level (major / minor / patch, `AGENTS.md` §4);
+- whether the change affects existing projects (`docs/PROCESS.md`, `docs/process/` or `.agents/skills/`) and the expected semver level (major / minor / patch, `AGENTS.md` §4);
 - for a major change, the migration an existing project needs.
 
 For a large or risky change ask whether to work in a branch `issue/N-short-name` with a pull request instead of directly on `main`.
@@ -29,7 +29,7 @@ For a large or risky change ask whether to work in a branch `issue/N-short-name`
 
 1. Edit the template files. Do **not** change `Process version` (only `release-template` does) and do not record anything in the template's `backlog/` or `CHANGELOG.md`.
 2. Keep placeholders, the "Template not initialized" notice, `TEC-001` and the seed of `backlog/` intact unless the issue is about them.
-3. If a skill was added, removed or renamed, update the skill tables in `docs/PROCESS.md` (§10, subsection "Skills") and `README.md`.
+3. If a skill was added, removed or renamed, update the skill tables in `docs/PROCESS.md` (§7, subsection "Skills") and `README.md`.
 
 ## 4. Verify
 
