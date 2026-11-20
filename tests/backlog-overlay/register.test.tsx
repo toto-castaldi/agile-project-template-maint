@@ -139,3 +139,26 @@ test('/backlog opens the pane with the keyboard, closed by Escape', async ($, on
   await $.command.run({ command: 'backlog' })
   expect(opened[0]).toMatchObject({ id: 'backlog', focus: true, closeOnEscape: true })
 })
+
+test('Done dependencies are dimmed, and so is the ID of an item with unmet dependencies', async ($, on) => {
+  const store = {
+    ...STORE,
+    items: [
+      item('TEC-001', 'Todo', { dependencies: ['TEC-003', 'TEC-002'] }),
+      item('TEC-002', 'Todo', { dependencies: ['TEC-003'] }),
+      item('TEC-003', 'Done'),
+    ],
+  }
+  engine(on, { '': store, '--branches --no-fetch': { ...store, branches: branches('skipped', []) } })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  await ui.press({ key: 'reload' })
+  const color = async (pattern: RegExp) => (await ui.find({ type: 'Text', text: pattern }))?.props.color
+  expect(await text(ui, /^TEC-001 —/)).toBe('TEC-001 — Title TEC-001')
+  expect(await color(/^TEC-001$/)).toBe('inactive')
+  expect(await text(ui, /^Dependencies:/)).toBe('Dependencies: TEC-003, TEC-002')
+  expect(await color(/^ TEC-003$/)).toBe('inactive')
+  expect(await color(/^, TEC-002$/)).toBeUndefined()
+  await ui.press({ key: 'next' })
+  expect(await color(/^TEC-002$/)).toBeUndefined()
+  await ui.unmount()
+})
