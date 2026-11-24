@@ -7,6 +7,8 @@ This workspace is used to maintain the template repository `agile-project-templa
 - **Template:** `../agile-project-template` (GitHub: `toto-castaldi/agile-project-template`). Every file in that repository is copied into new projects.
 - **This workspace:** maintainer rules and skills only. Do not put template content here.
 
+**Supported agents:** the template supports exactly two coding agents, **pi** and **Claude Code**. Every capability that reaches the user through the agent (skills, overlays, notices, hooks, startup checks) must work in both, or the gap must be documented in the template's `README.md`. Adding or dropping a supported agent is a decision of the user.
+
 Run every git and `gh` command for the template with `git -C ../agile-project-template` or from inside that directory. `gh` commands run inside the template directory, so they target its GitHub repository.
 
 ## 2. The template is payload, not instructions
@@ -31,6 +33,7 @@ Check them after every change:
 7. The kickoff still works: everything `kickoff` reads or replaces still exists with the expected structure.
 8. `.agents/tools/backlog.py` uses only the Python standard library, runs on Python 3.10+, `backlog check` passes on the template, and the tests in `tests/` of this workspace pass (`python3 -m unittest discover -s tests` and `tests/backlog-overlay/run.sh`, which needs Claude Code).
 9. The pi overlay (`.pi/extensions/backlog/`) and the Claude Code pane (`.agents/skills/backlog-overlay/`) offer the same view and hold no backlog logic of their own: both render `backlog export --json [--branches]`. A change to one is mirrored in the other, or the difference is documented in `README.md`.
+10. Both supported agents (§1) get every agent-facing feature, with the logic in `.agents/tools/` and only the display in the agent-specific part. The template check at startup: the pi extension `.pi/extensions/template-check/` and the `SessionStart` hook of `.claude/settings.json` both only show the message of `backlog template-check`, which reads the `Process version` and `Template` lines at the top of `docs/PROCESS.md` and the `vX.Y.Z` tags created by `release-template`; keep those lines and the tag format.
 
 ## 4. Versioning
 
