@@ -541,7 +541,7 @@ class BranchResolution(GitBase):
 class Help(Base):
     def test_help_lists_the_syntax_of_every_command(self):
         text = self.ok("--help")
-        for line in ("  add --type {US,TEC,SPIKE,BUG}", "  edit [--title TITLE]", "  done --outcome OUTCOME id",
+        for line in ("  add --type {US,TEC,SPIKE,BUG}", "  edit [--title TITLE]", "  done --outcome OUTCOME [--changelog ENTRY] id",
                      "  version edit [--goal GOAL] [--scope-change TEXT] id", "  epic add --title TITLE --scope SCOPE",
                      "  docs [--json] [--for ID]"):
             self.assertIn(line, text)
@@ -553,6 +553,35 @@ class Help(Base):
         self.assertEqual(result.returncode, 2)
         self.assertIn("--help lists the commands", result.stderr)
 
+
+
+class Changelog(Base):
+    def finish(self, *extra):
+        item_id = self.add()
+        self.start(item_id)
+        self.ok("done", item_id, "--outcome", "Fatto", *extra)
+        return item_id
+
+    def test_section_from_done_items(self):
+        self.finish("--changelog", "Fixed: Il  salvataggio non si perde")
+        self.finish("--changelog", "Added: Si esporta in PDF")
+        self.finish()
+        self.assertEqual(self.ok("changelog"), "## [Unreleased]\n\n### Added\n\n- Si esporta in PDF (TEC-002)\n\n"
+                         "### Fixed\n\n- Il salvataggio non si perde (TEC-001)\n")
+        self.ok("close-version", "v0.1.0")
+        self.assertTrue(self.ok("changelog", "v0.1.0").startswith(f"## [0.1.0] - {TODAY}\n"))
+
+    def test_entry_is_validated_and_only_on_done_items(self):
+        item_id = self.add()
+        self.start(item_id)
+        self.assertIn("invalid changelog", self.refused("done", item_id, "--outcome", "Fatto", "--changelog", "Nuovo: x"))
+        self.assertIn("is not Done", self.refused("edit", item_id, "--changelog", "Added: x"))
+        self.ok("done", item_id, "--outcome", "Fatto")
+        self.ok("edit", item_id, "--changelog", "Changed: Y")
+        self.assertIn("- **Changelog:** Changed: Y", self.ok("show", item_id))
+        self.ok("reopen", item_id)
+        self.assertNotIn("changelog", self.item(item_id))
+        self.ok("check")
 
 if __name__ == "__main__":
     unittest.main()
