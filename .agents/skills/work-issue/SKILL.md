@@ -29,7 +29,7 @@ For a large or risky change ask whether to work in a branch `issue/N-short-name`
 
 1. Edit the template files. Do **not** change `Process version` (only `release-template` does) and do not record anything in the template's `backlog/` or `CHANGELOG.md`.
 2. Keep placeholders, the "Template not initialized" notice, `TEC-001` and the seed of `backlog/` intact unless the issue is about them.
-3. If a skill was added, removed or renamed, update the skill tables in `docs/PROCESS.md` (§7, subsection "Skills") and `README.md`.
+3. If a skill was added, removed or renamed, update the skill table in `README.md`.
 
 ## 4. Verify
 
