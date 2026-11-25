@@ -513,5 +513,21 @@ class BranchResolution(GitBase):
         self.assertEqual(items["TEC-001"]["status"], "Todo")
 
 
+class Help(Base):
+    def test_help_lists_the_syntax_of_every_command(self):
+        text = self.ok("--help")
+        for line in ("  add --type {US,TEC,SPIKE,BUG}", "  edit [--title TITLE]", "  done --outcome OUTCOME id",
+                     "  version edit [--goal GOAL] [--scope-change TEXT] id", "  epic add --title TITLE --scope SCOPE",
+                     "  docs [--json] [--for ID]"):
+            self.assertIn(line, text)
+        self.assertNotIn("[-h]", text)
+        self.assertLess(len(text), 3000)
+
+    def test_missing_command_points_to_help(self):
+        result = self.run_tool()
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("--help lists the commands", result.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
