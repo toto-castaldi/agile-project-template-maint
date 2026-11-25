@@ -435,7 +435,7 @@ class Branches(GitBase):
 
 
 class BranchResolution(GitBase):
-    """Rules of docs/PROCESS-PARALLEL.md §1 shared with the pi overlay."""
+    """Rules of docs/process/backlog.md §5 shared with the pi overlay."""
 
     def setUp(self):
         super().setUp()
