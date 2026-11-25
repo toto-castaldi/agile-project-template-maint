@@ -347,6 +347,31 @@ class Reading(Base):
         self.assertIn("- Idea", output)
         self.refused("show", "TEC-099")
 
+    def test_show_is_short_for_closed_items(self):
+        long_text = "Esito " + "lungo " * 100
+        self.add("--description", "Descrizione", "--remark", "Nota")
+        self.assertIn("  - Criterio", self.ok("show", "TEC-001"))
+        self.start("TEC-001")
+        self.ok("done", "TEC-001", "--outcome", long_text)
+        short = self.ok("show", "TEC-001")
+        self.assertNotIn("  - Criterio", short)
+        self.assertNotIn("Nota", short)
+        self.assertIn("- **Not shown:** 1 acceptance criteria, 1 remarks (show --full)", short)
+        self.assertIn("…", short)
+        self.assertIn("Descrizione", short)
+        full = self.ok("show", "TEC-001", "--full")
+        self.assertIn("  - Criterio", full)
+        self.assertIn(" ".join(long_text.split()), full)
+
+    def test_status_shows_three_recently_completed(self):
+        for _ in range(5):
+            item_id = self.add()
+            self.start(item_id)
+            self.ok("done", item_id, "--outcome", "Fatto")
+        section = self.ok("status").split("Recently completed (5)\n")[1].split("\n\n")[0].splitlines()
+        self.assertEqual(len(section), 4)
+        self.assertEqual(section[-1], "  … 2 more")
+
     def test_list_files(self):
         self.ok("notes", "--add", "Una")
         self.ok("notes", "--add", "Due")
